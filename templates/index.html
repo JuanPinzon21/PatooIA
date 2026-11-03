@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Patoo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <div class="logo"><span class="logo-dot">P</span> Patoo</div>
+  </header>
+
+  <main class="contenedor">
+    <section class="hero">
+      <span class="pill">Detección visual en perros y gatos</span>
+      <h1>Revisa la piel, ojos y orejas de tu mascota</h1>
+      <p>Sube una foto y Patoo te muestra las posibles afecciones con su nivel de confianza.</p>
+    </section>
+
+    <section class="tarjeta">
+      <div id="zona" class="zona">
+        <img id="preview" alt="Vista previa" hidden>
+        <div id="zona-texto">
+          <strong>Arrastra la foto aquí</strong>
+          <span>JPG o PNG, con buena luz y de cerca</span>
+        </div>
+      </div>
+      <input id="archivo" type="file" accept="image/*" hidden>
+      <div class="botones">
+        <button id="btn-elegir" class="btn primario" type="button">Elegir foto</button>
+        <button id="btn-analizar" class="btn secundario" type="button" disabled>Analizar</button>
+      </div>
+      <p id="error" class="error" hidden></p>
+    </section>
+
+    <section id="resultado" class="tarjeta" hidden>
+      <div id="aviso-baja" class="aviso" hidden>
+        <strong>No estoy seguro.</strong> Prueba con otra foto: más luz, de cerca y sin filtros.
+      </div>
+      <h2 id="titulo-res"></h2>
+      <div id="barras"></div>
+      <p id="demo" class="demo" hidden>Modo demo: resultados de ejemplo (aún no hay modelo cargado).</p>
+    </section>
+  </main>
+
+  <footer class="aviso-pie">
+    Patoo es una orientación basada en imágenes y no reemplaza la revisión de un veterinario.
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

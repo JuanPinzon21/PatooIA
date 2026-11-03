@@ -1,0 +1,32 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #F6F8F4; color: #1D2B26; font-family: "Nunito", sans-serif; }
+.top { padding: 20px 48px; }
+.logo { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 800; }
+.logo-dot { width: 36px; height: 36px; border-radius: 50%; background: #1F7A5C; color: #fff;
+  display: flex; align-items: center; justify-content: center; }
+.contenedor { max-width: 720px; margin: 0 auto; padding: 16px 24px 48px; display: grid; gap: 24px; }
+.pill { background: #DDEFE6; color: #14583F; padding: 6px 14px; border-radius: 16px; font-weight: 700; font-size: 14px; }
+h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.05; margin: 18px 0 12px; }
+.hero p { font-size: 18px; color: #3F524A; margin: 0; }
+.tarjeta { background: #fff; border: 1px solid #DDE5DF; border-radius: 24px; padding: 24px; }
+.zona { border: 2px dashed #1F7A5C; border-radius: 18px; min-height: 240px; background: #F6FBF8;
+  display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+.zona.arriba { background: #E3F3EA; }
+.zona strong { display: block; font-size: 20px; }
+.zona span { color: #5A6B64; }
+#preview { max-width: 100%; max-height: 320px; object-fit: contain; }
+.botones { display: flex; gap: 12px; margin-top: 20px; }
+.btn { flex: 1; height: 48px; border-radius: 24px; font: 700 16px "Nunito", sans-serif; cursor: pointer; }
+.primario { border: 0; background: #1F7A5C; color: #fff; }
+.secundario { border: 2px solid #1F7A5C; background: #fff; color: #14583F; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.fila { margin-top: 14px; }
+.fila-top { display: flex; justify-content: space-between; font-weight: 700; }
+.pista { height: 10px; border-radius: 5px; background: #E3EAE5; margin-top: 6px; }
+.relleno { height: 10px; border-radius: 5px; background: #4F7364; }
+.fila.principal .relleno { background: #1F7A5C; }
+h2 { margin: 0 0 6px; font-size: 36px; }
+.aviso { background: #FFF4D9; color: #5C4300; border-radius: 16px; padding: 14px 18px; margin-bottom: 16px; }
+.error { color: #9B1C1C; font-weight: 700; }
+.demo { color: #5A6B64; font-size: 14px; }
+.aviso-pie { background: #FFF4D9; color: #5C4300; padding: 14px 24px; font-size: 15px; text-align: center; }
