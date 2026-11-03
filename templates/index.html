@@ -2,53 +2,101 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Patoo</title>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8f2">
+  <meta name="description" content="Una orientación visual sencilla para cuidar la piel, los ojos y las orejas de tu mascota.">
+  <title>Patoo — cuidado que se nota</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <header class="top">
-    <div class="logo"><span class="logo-dot">P</span> Patoo</div>
+    <a class="logo" href="/" aria-label="Patoo, inicio">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none"><path d="M11 16.5c0-3.3 2-5.7 4.4-5.7 1.9 0 3.4 1.5 4.6 3.3 1.2-1.8 2.7-3.3 4.6-3.3 2.4 0 4.4 2.4 4.4 5.7 0 7.4-5.7 12.3-9 12.3s-9-4.9-9-12.3Z" fill="currentColor"/><path d="M17 20h.01M23 20h.01" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="m18 23 2 1.5 2-1.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span>Patoo<span class="logo-period">.</span></span>
+    </a>
+    <span class="top-note"><span class="status-dot"></span> Cuidado más cerca</span>
   </header>
 
   <main class="contenedor">
-    <section class="hero">
-      <span class="pill">Detección visual en perros y gatos</span>
-      <h1>Revisa la piel, ojos y orejas de tu mascota</h1>
-      <p>Sube una foto y Patoo te muestra las posibles afecciones con su nivel de confianza.</p>
-    </section>
-
-    <section class="tarjeta">
-      <div id="zona" class="zona">
-        <img id="preview" alt="Vista previa" hidden>
-        <div id="zona-texto">
-          <strong>Arrastra la foto aquí</strong>
-          <span>JPG o PNG, con buena luz y de cerca</span>
+    <section class="hero" aria-labelledby="titulo-principal">
+      <div class="hero-copy">
+        <h1 id="titulo-principal">Ellos no pueden contarlo.<br><span>Sus fotos sí.</span></h1>
+        <p>Sube una foto de la piel, los ojos o las orejas de tu compañero. Te mostraremos algunas posibilidades para que sepas por dónde empezar.</p>
+        <ul class="hero-points">
+          <li><i aria-hidden="true">✓</i> Fácil de usar</li>
+          <li><i aria-hidden="true">✓</i> Resultado en segundos</li>
+        </ul>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="art-sun"></div>
+        <div class="art-spark spark-one">✦</div><div class="art-spark spark-two">✳</div>
+        <div class="art-card art-card-back"></div>
+        <div class="art-card art-card-front">
+          <div class="pet-face">
+            <div class="ear ear-left"></div><div class="ear ear-right"></div>
+            <div class="face-inner"><span class="eye eye-left"></span><span class="eye eye-right"></span><span class="snout"><i></i></span><span class="cheek cheek-left"></span><span class="cheek cheek-right"></span></div>
+          </div>
+          <span class="art-caption">un compañero feliz</span>
         </div>
+        <div class="art-badge"><span>♥</span> aquí contigo</div>
       </div>
-      <input id="archivo" type="file" accept="image/*" hidden>
-      <div class="botones">
-        <button id="btn-elegir" class="btn primario" type="button">Elegir foto</button>
-        <button id="btn-analizar" class="btn secundario" type="button" disabled>Analizar</button>
-      </div>
-      <p id="error" class="error" hidden></p>
     </section>
 
-    <section id="resultado" class="tarjeta" hidden>
-      <div id="aviso-baja" class="aviso" hidden>
-        <strong>No estoy seguro.</strong> Prueba con otra foto: más luz, de cerca y sin filtros.
+    <section class="workspace" aria-labelledby="titulo-subir">
+      <div class="section-heading">
+        <h2 id="titulo-subir">Empecemos con una foto</h2>
+        <p class="privacy-note">Tu foto solo se usa para este análisis.</p>
       </div>
-      <h2 id="titulo-res"></h2>
-      <div id="barras"></div>
-      <p id="demo" class="demo" hidden>Modo demo: resultados de ejemplo (aún no hay modelo cargado).</p>
+
+      <div class="tarjeta upload-card">
+        <div id="zona" class="zona" role="button" tabindex="0" aria-label="Selecciona o arrastra una foto de tu mascota">
+          <img id="preview" alt="Vista previa de la foto seleccionada" hidden>
+          <div id="zona-texto" class="zona-texto">
+            <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 21V7m0 0-5 5m5-5 5 5M7 19v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <strong><span class="txt-pc">Arrastra tu foto hasta aquí</span><span class="txt-movil">Toca para añadir una foto</span></strong>
+            <span class="zona-sub">o selecciónala desde tu dispositivo</span>
+            <small>JPG, PNG o WebP</small>
+          </div>
+          <div id="cargando" class="cargando" hidden aria-hidden="true"><span class="spinner"></span><span>Analizando tu foto…</span></div>
+        </div>
+
+        <input id="archivo" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <input id="camara" type="file" accept="image/*" capture="environment" hidden>
+
+        <div class="photo-tip">
+          <span class="tip-icon" aria-hidden="true">✦</span>
+          <span><b>Para una mejor foto</b><small>Busca buena luz y acércate a la zona que quieres revisar.</small></span>
+        </div>
+
+        <div class="botones">
+          <button id="btn-analizar" class="btn primario" type="button" disabled>Analizar foto</button>
+          <button id="btn-camara" class="btn secundario solo-movil" type="button">Tomar foto</button>
+          <button id="btn-elegir" class="btn secundario" type="button">Elegir foto</button>
+        </div>
+        <p id="error" class="error" role="alert" hidden></p>
+      </div>
+
+      <section id="resultado" class="tarjeta resultado-card" aria-live="polite" tabindex="-1" hidden>
+        <div class="result-heading">
+          <span class="result-check" aria-hidden="true">✦</span>
+          <div><span class="step-label">Tu orientación</span><h2 id="titulo-res"></h2></div>
+        </div>
+        <div id="aviso-baja" class="aviso" hidden><strong>No estamos del todo seguros.</strong> Prueba con otra foto, con más luz y más cerca.</div>
+        <div id="barras" class="barras"></div>
+        <p id="demo" class="demo" hidden>Estos son resultados de ejemplo mientras se configura el modelo.</p>
+        <button id="btn-otra" class="btn secundario ancho" type="button">Probar con otra foto</button>
+      </section>
+
+      <p class="gentle-note"><span aria-hidden="true">♡</span> Cada mascota es única. Usa esta orientación como un primer paso.</p>
     </section>
   </main>
 
-  <footer class="aviso-pie">
-    Patoo es una orientación basada en imágenes y no reemplaza la revisión de un veterinario.
-  </footer>
-
+  <footer class="aviso-pie"><span class="footer-heart" aria-hidden="true">♥</span><span>Patoo ofrece orientación basada en imágenes y no reemplaza la revisión de un veterinario.</span></footer>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
