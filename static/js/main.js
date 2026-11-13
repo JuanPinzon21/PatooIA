@@ -159,9 +159,9 @@ function mostrarResultado(json) {
   const resumen = document.getElementById("resumen-detecciones");
   const hayDetecciones = json.cantidad > 0;
 
-  document.getElementById("titulo-res").textContent = hayDetecciones
-    ? "Regiones detectadas"
-    : "Sin regiones detectadas";
+  document.getElementById("titulo-res").textContent = json.modo === "clasificacion"
+    ? "Clases más parecidas"
+    : (hayDetecciones ? "Regiones detectadas" : "Sin regiones detectadas");
   resumen.textContent = json.mensaje || "";
   barras.replaceChildren();
 
@@ -175,7 +175,7 @@ function mostrarResultado(json) {
     const nombre = document.createElement("span");
     nombre.textContent = r.clase;
     const valor = document.createElement("span");
-    valor.textContent = `${pct}% · puntaje del modelo`;
+    valor.textContent = `${pct}% · ${json.modo === "clasificacion" ? "puntaje de clasificación" : "puntaje del detector"}`;
     top.append(nombre, valor);
 
     const descripcion = document.createElement("p");

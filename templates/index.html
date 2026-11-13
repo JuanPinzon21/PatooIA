@@ -55,13 +55,14 @@
 
       <div class="tarjeta upload-card">
         <div class="categoria-wrap">
-          <label for="categoria">¿Qué zona quieres revisar?</label>
+          <label for="categoria">¿Qué quieres revisar?</label>
           <select id="categoria" name="categoria">
             <option value="piel">Piel</option>
-            <option value="orejas">Orejas</option>
+            <option value="orejas">Orejas (detector)</option>
+            <option value="general">Clasificador general (Colab · 28 clases)</option>
             <option value="dientes" disabled>Dientes y boca (próximamente)</option>
           </select>
-          <small>El módulo dental se habilitará cuando tengamos imágenes y etiquetas veterinarias revisadas.</small>
+          <small>El clasificador Colab evalúa la foto completa y sugiere etiquetas; no marca dónde está una lesión. Piel y orejas usan detectores independientes.</small>
         </div>
         <div id="zona" class="zona" role="button" tabindex="0" aria-label="Selecciona o arrastra una foto de tu mascota">
           <img id="preview" alt="Vista previa de la foto seleccionada" hidden>

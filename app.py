@@ -1,3 +1,4 @@
+import json
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -16,7 +17,12 @@ MODEL_PATHS = {
     "piel": BASE_DIR / "model" / "piel" / "best.pt",
     "orejas": BASE_DIR / "model" / "orejas" / "best.pt",
 }
-MODEL_LABELS = {"piel": "Piel", "orejas": "Orejas"}
+MODEL_LABELS = {"piel": "Piel", "orejas": "Orejas", "general": "Clasificador general Colab"}
+COLAB_MODEL_PATH = BASE_DIR / "model" / "colab" / "huellitas_best.keras"
+COLAB_LABELS_PATH = BASE_DIR / "model" / "colab" / "class_names_es.json"
+COLAB_LABELS = json.loads(COLAB_LABELS_PATH.read_text(encoding="utf-8"))["output_order_from_notebook"]
+COLAB_INPUT_SIZE = tuple(json.loads(COLAB_LABELS_PATH.read_text(encoding="utf-8"))["input_size"])
+COLAB_MODEL_CACHE = None
 MODEL_CACHE = {}
 MODEL_LOCK = Lock()
 INFERENCE_LOCK = Lock()
@@ -102,6 +108,61 @@ def cargar_modelo(categoria):
     return MODEL_CACHE[categoria]
 
 
+
+def cargar_clasificador_colab():
+    """Carga de forma diferida el clasificador MobileNetV2 exportado desde Colab."""
+    global COLAB_MODEL_CACHE
+    if COLAB_MODEL_CACHE is not None:
+        return COLAB_MODEL_CACHE
+    if not COLAB_MODEL_PATH.is_file():
+        raise FileNotFoundError("Falta model/colab/huellitas_best.keras.")
+    try:
+        import tensorflow as tf
+    except ImportError as exc:
+        raise RuntimeError("Falta TensorFlow. Instala las dependencias de requirements.txt.") from exc
+    with MODEL_LOCK:
+        if COLAB_MODEL_CACHE is None:
+            model = tf.keras.models.load_model(COLAB_MODEL_PATH, compile=False)
+            salida = model.output_shape[-1]
+            if salida != len(COLAB_LABELS):
+                raise RuntimeError(
+                    f"El checkpoint produce {salida} clases, pero class_names_es.json contiene {len(COLAB_LABELS)}."
+                )
+            COLAB_MODEL_CACHE = model
+    return COLAB_MODEL_CACHE
+
+
+def clasificar_con_colab(imagen):
+    """Predice las tres etiquetas con mayor puntaje para la imagen completa."""
+    import tensorflow as tf
+
+    model = cargar_clasificador_colab()
+    alto, ancho = COLAB_INPUT_SIZE
+    imagen_redimensionada = imagen.resize((ancho, alto), Image.Resampling.BILINEAR)
+    lote = tf.keras.utils.img_to_array(imagen_redimensionada, dtype="float32")
+    lote = tf.expand_dims(lote, axis=0)
+    with INFERENCE_LOCK:
+        puntajes = model.predict(lote, verbose=0)[0]
+    if len(puntajes) != len(COLAB_LABELS):
+        raise RuntimeError("La salida del modelo no coincide con el mapa de etiquetas del notebook.")
+    indices = sorted(range(len(puntajes)), key=lambda indice: float(puntajes[indice]), reverse=True)[:3]
+    resultados = []
+    for indice in indices:
+        clase = COLAB_LABELS[indice]
+        resultados.append({
+            "clase": clase["label_es"],
+            "clase_origen": clase["source"],
+            "especie": clase["species"],
+            "confianza": float(puntajes[indice]),
+            "descripcion": (
+                f"Etiqueta de entrenamiento: {clase['source']}. El clasificador evalúa la imagen completa; "
+                "este resultado no localiza una lesión ni confirma una enfermedad."
+            ),
+            "fuente": "",
+        })
+    return resultados
+
+
 def info_clase(nombre):
     clave = str(nombre).strip().lower()
     return CLASS_INFO.get(clave, {
@@ -145,8 +206,8 @@ def predict():
     categoria = (request.form.get("categoria") or "").strip().lower()
     if categoria == "dientes":
         return jsonify(error="El módulo dental aún no está disponible: falta un dataset etiquetado y un modelo validado."), 422
-    if categoria not in MODEL_PATHS:
-        return jsonify(error="Selecciona piel u orejas para analizar la imagen."), 400
+    if categoria not in MODEL_PATHS and categoria != "general":
+        return jsonify(error="Selecciona piel, orejas o el clasificador general de Colab."), 400
 
     archivo = request.files.get("imagen")
     if not archivo or archivo.filename == "":
@@ -158,6 +219,29 @@ def predict():
             imagen.load()
     except (UnidentifiedImageError, OSError, ValueError):
         return jsonify(error="No pude leer la imagen. Usa un archivo JPG, PNG o WebP válido."), 400
+
+    if categoria == "general":
+        try:
+            resultados = clasificar_con_colab(imagen)
+        except FileNotFoundError as exc:
+            return jsonify(error=str(exc)), 503
+        except RuntimeError as exc:
+            return jsonify(error=str(exc)), 503
+        except Exception:
+            app.logger.exception("Falló el clasificador de Colab")
+            return jsonify(error="No se pudo ejecutar el clasificador de Colab. Revisa el checkpoint y TensorFlow."), 500
+        return jsonify(
+            demo=False,
+            modo="clasificacion",
+            categoria="general",
+            zona=MODEL_LABELS["general"],
+            detecciones=[],
+            resultados=resultados,
+            cantidad=len(resultados),
+            mensaje="El clasificador compara la foto completa con 28 categorías. Son puntajes del modelo, no probabilidades ni diagnósticos.",
+            puntaje_es_probabilidad=False,
+            umbral=None,
+        )
 
     try:
         model = cargar_modelo(categoria)

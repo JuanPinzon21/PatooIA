@@ -6,8 +6,9 @@ Prototipo Flask para explorar imágenes de piel y orejas de perros y gatos con d
 
 - `model/piel/best.pt`: Patoo piel YOLO11n v3_auto, entrenado para 6 clases.
 - `model/orejas/best.pt`: Patoo orejas YOLO11n v2, entrenado para 3 clases.
+- `model/colab/huellitas_best.keras`: MobileNetV2 de Colab, clasifica la imagen completa entre 28 etiquetas; las traducciones y el orden de salida están en `model/colab/class_names_es.json`.
 
-La interfaz permite elegir la zona que se va a analizar. El módulo dental aparece como próximo porque el material compartido no contiene un dataset dental anotado ni un modelo entrenado para esa zona. El reporte de orejas V3 tiene 49 imágenes aprobadas, 41 excluidas y 56 marcadas para revisión; conviene cerrar esa revisión antes de sumar esos datos a un nuevo entrenamiento.
+La interfaz permite elegir un detector para piel, otro para orejas o el clasificador general de Colab. Este último evalúa la imagen completa y no localiza hallazgos. El clasificador Colab incluye etiquetas de enfermedad dental para gatos y perros, pero no localiza dientes ni hallazgos; un detector dental específico sigue pendiente de datos anotados y validación. El reporte de orejas V3 tiene 49 imágenes aprobadas, 41 excluidas y 56 marcadas para revisión; conviene cerrar esa revisión antes de sumar esos datos a un nuevo entrenamiento.
 
 Los CSV de entrenamiento muestran estos resultados de validación (no son una evaluación clínica ni una prueba independiente):
 

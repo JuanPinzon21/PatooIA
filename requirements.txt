@@ -1,3 +1,5 @@
 Flask>=3.1,<4
 Pillow>=10.0
 ultralytics>=8.3,<9
+# Clasificador general MobileNetV2 exportado desde Colab
+tensorflow>=2.16,<3
