@@ -10,6 +10,7 @@ const zonaTexto = document.getElementById("zona-texto");
 const cargando = document.getElementById("cargando");
 const errorEl = document.getElementById("error");
 const resultado = document.getElementById("resultado");
+const categoria = document.getElementById("categoria");
 
 const TIPOS = ["image/jpeg", "image/png", "image/webp"];
 const MAX_ORIGINAL = 25 * 1024 * 1024; // se comprime antes de enviar
@@ -89,6 +90,24 @@ zona.addEventListener("keydown", (e) => {
 inputArchivo.addEventListener("change", () => cargarArchivo(inputArchivo.files[0]));
 inputCamara.addEventListener("change", () => cargarArchivo(inputCamara.files[0]));
 btnOtra.addEventListener("click", reiniciar);
+document.querySelectorAll(".sample-card").forEach((button) => {
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      const resp = await fetch(button.dataset.url);
+      if (!resp.ok) throw new Error("No pudimos abrir la foto de muestra.");
+      const blob = await resp.blob();
+      const file = new File([blob], "muestra.jpg", { type: blob.type || "image/jpeg" });
+      categoria.value = button.dataset.categoria;
+      cargarArchivo(file);
+      zona.scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch (err) {
+      mostrarError(err.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+});
 
 zona.addEventListener("dragover", (e) => { e.preventDefault(); zona.classList.add("arriba"); });
 zona.addEventListener("dragleave", () => zona.classList.remove("arriba"));
@@ -118,6 +137,7 @@ btnAnalizar.addEventListener("click", async () => {
 
     const datos = new FormData();
     datos.append("imagen", envio);
+    datos.append("categoria", categoria.value);
 
     const resp = await fetch("/predict", { method: "POST", body: datos });
     let json = {};
@@ -135,27 +155,32 @@ btnAnalizar.addEventListener("click", async () => {
 });
 
 function mostrarResultado(json) {
-  document.getElementById("aviso-baja").hidden = !!json.confiable;
-  document.getElementById("demo").hidden = !json.demo;
-  document.getElementById("titulo-res").textContent = json.confiable
-    ? json.resultados[0].clase
-    : "Posibilidades";
-
   const barras = document.getElementById("barras");
+  const resumen = document.getElementById("resumen-detecciones");
+  const hayDetecciones = json.cantidad > 0;
+
+  document.getElementById("titulo-res").textContent = hayDetecciones
+    ? "Regiones detectadas"
+    : "Sin regiones detectadas";
+  resumen.textContent = json.mensaje || "";
   barras.replaceChildren();
 
-  json.resultados.forEach((r, i) => {
+  (json.resultados || []).forEach((r, i) => {
     const pct = Math.round(r.confianza * 100);
     const fila = document.createElement("div");
-    fila.className = "fila" + (i === 0 && json.confiable ? " principal" : "");
+    fila.className = "fila" + (i === 0 ? " principal" : "");
 
     const top = document.createElement("div");
     top.className = "fila-top";
     const nombre = document.createElement("span");
     nombre.textContent = r.clase;
     const valor = document.createElement("span");
-    valor.textContent = pct + "%";
+    valor.textContent = `${pct}% · puntaje del modelo`;
     top.append(nombre, valor);
+
+    const descripcion = document.createElement("p");
+    descripcion.className = "fila-descripcion";
+    descripcion.textContent = r.descripcion || "Esta clase es una pista visual, no un diagnóstico.";
 
     const pista = document.createElement("div");
     pista.className = "pista";
@@ -163,12 +188,21 @@ function mostrarResultado(json) {
     pista.setAttribute("aria-valuenow", pct);
     pista.setAttribute("aria-valuemin", 0);
     pista.setAttribute("aria-valuemax", 100);
-    pista.setAttribute("aria-label", r.clase);
+    pista.setAttribute("aria-label", `${r.clase}, puntaje del modelo ${pct}%`);
     const relleno = document.createElement("div");
     relleno.className = "relleno";
     pista.append(relleno);
-
-    fila.append(top, pista);
+    fila.append(top, descripcion);
+    if (r.fuente) {
+      const fuente = document.createElement("a");
+      fuente.className = "fuente-descripcion";
+      fuente.href = r.fuente;
+      fuente.target = "_blank";
+      fuente.rel = "noopener noreferrer";
+      fuente.textContent = "Leer una descripción veterinaria";
+      fila.append(fuente);
+    }
+    fila.append(pista);
     barras.append(fila);
     requestAnimationFrame(() => requestAnimationFrame(() => { relleno.style.width = pct + "%"; }));
   });
@@ -177,3 +211,6 @@ function mostrarResultado(json) {
   resultado.scrollIntoView({ behavior: "smooth", block: "start" });
   resultado.focus({ preventScroll: true });
 }
+
+
+

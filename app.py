@@ -1,63 +1,227 @@
-import io
-import json
 import os
+from collections import defaultdict
+from pathlib import Path
+from threading import Lock
 
-import numpy as np
-from PIL import Image
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request, send_from_directory, url_for
+from PIL import Image, ImageOps, UnidentifiedImageError
 
+BASE_DIR = Path(__file__).resolve().parent
+DEMO_SAMPLES_DIR = BASE_DIR / "demo_samples"
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB máx.
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
-RUTA_MODELO = "model/patoo_model.keras"
-RUTA_CLASES = "model/class_names.json"
-UMBRAL = 0.5  # por debajo de esto la app dice "no estoy seguro"
+# Detectores independientes: cada uno fue entrenado para una zona distinta.
+MODEL_PATHS = {
+    "piel": BASE_DIR / "model" / "piel" / "best.pt",
+    "orejas": BASE_DIR / "model" / "orejas" / "best.pt",
+}
+MODEL_LABELS = {"piel": "Piel", "orejas": "Orejas"}
+MODEL_CACHE = {}
+MODEL_LOCK = Lock()
+INFERENCE_LOCK = Lock()
+IMAGE_SIZE = 416
+CONFIDENCE_THRESHOLD = 0.10
+IOU_THRESHOLD = 0.45
+MAX_DETECTIONS = 20
 
-model = None
-class_names = []
-if os.path.exists(RUTA_MODELO) and os.path.exists(RUTA_CLASES):
-    from tensorflow import keras
-    model = keras.models.load_model(RUTA_MODELO)
-    with open(RUTA_CLASES, encoding="utf-8") as f:
-        class_names = json.load(f)
+# Explicaciones breves y educativas; no sustituyen una evaluación veterinaria.
+CLASS_INFO = {
+    "acne_felino": {
+        "nombre": "Acné felino",
+        "descripcion": "Suele aparecer como puntos negros o granitos, sobre todo en el mentón. Otras afecciones pueden parecerse.",
+        "fuente": "https://vcahospitals.com/know-your-pet/chin-acne-in-cats",
+    },
+    "tina": {
+        "nombre": "Tiña",
+        "descripcion": "Infección por hongos dermatofitos que puede afectar piel y pelo; a veces deja zonas redondas sin pelo o descamadas.",
+        "fuente": "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center/health-information/feline-health-topics/ringworm-serious-readily-treatable-affliction",
+    },
+    "demodicosis": {
+        "nombre": "Demodicosis",
+        "descripcion": "Un aumento de ácaros Demodex puede inflamar la piel y causar áreas con pérdida de pelo o descamación.",
+        "fuente": "https://www.msdvetmanual.com/es/propietarios-de-perros/trastornos-de-la-piel-de-los-perros/infestaci%C3%B3n-por-%C3%A1caros-sarna-acariasis-en-los-perros",
+    },
+    "sarna_sarcoptica": {
+        "nombre": "Sarna sarcóptica",
+        "descripcion": "Ácaros contagiosos pueden causar picor intenso, costras y pérdida de pelo. La confirmación requiere revisión veterinaria.",
+        "fuente": "https://www.msdvetmanual.com/dog-owners/skin-disorders-of-dogs/mite-infestation-mange-acariasis-scabies-in-dogs",
+    },
+    "pulgas": {
+        "nombre": "Pulgas",
+        "descripcion": "Las picaduras pueden irritar la piel; algunos animales reaccionan a la saliva de las pulgas con picor y lesiones.",
+        "fuente": "https://www.msdvetmanual.com/integumentary-system/fleas-and-flea-allergy-dermatitis/fleas-in-dogs-and-cats",
+    },
+    "hotspot": {
+        "nombre": "Lesión tipo hot spot",
+        "descripcion": "Zona de piel irritada y húmeda que puede aparecer tras rascarse o lamerse repetidamente; es importante revisar su causa.",
+        "fuente": "https://www.msdvetmanual.com/integumentary-system/pyoderma/pyoderma-in-dogs-and-cats",
+    },
+    "acaros_oido": {
+        "nombre": "Ácaros del oído",
+        "descripcion": "Parásitos del oído externo que pueden provocar rascado, sacudidas de cabeza e inflamación, especialmente en gatos.",
+        "fuente": "https://www.msdvetmanual.com/dog-owners/skin-disorders-of-dogs/mite-infestation-mange-acariasis-scabies-in-dogs",
+    },
+    "otitis": {
+        "nombre": "Otitis",
+        "descripcion": "Inflamación del conducto auditivo externo. Puede tener causas distintas y necesita examen del oído para identificarlas.",
+        "fuente": "https://www.msdvetmanual.com/ear-disorders/otitis-externa/otitis-externa-in-animals",
+    },
+    "enrojecimiento_hematoma_auricular": {
+        "nombre": "Enrojecimiento o hematoma auricular",
+        "descripcion": "La clase del modelo agrupa ambos aspectos. Un hematoma es una hinchazón con sangre o líquido bajo la piel del pabellón; la imagen no confirma su causa.",
+        "fuente": "https://www.msdvetmanual.com/ear-disorders/diseases-of-the-pinna/auricular-hematomas-in-animals",
+    },
+}
+
+FEATURED_SAMPLES = (
+    ("piel", "tina_01.jpg", "Piel", "Tiña"),
+    ("orejas", "acaros_oido_01.jpg", "Orejas", "Ácaros del oído"),
+)
 
 
-def preparar(img_bytes):
-    img = Image.open(io.BytesIO(img_bytes)).convert("RGB").resize((224, 224))
-    arr = np.array(img, dtype="float32")
-    # IMPORTANTE: debe ser el mismo preprocesamiento del entrenamiento.
-    # Si el modelo ya incluye Rescaling(1/255), no dividas aquí.
-    return np.expand_dims(arr, 0)
+def cargar_modelo(categoria):
+    """Carga cada YOLO una sola vez, cuando se solicita esa categoría."""
+    if categoria in MODEL_CACHE:
+        return MODEL_CACHE[categoria]
+
+    ruta = MODEL_PATHS[categoria]
+    if not ruta.is_file():
+        raise FileNotFoundError(f"Falta el checkpoint de {MODEL_LABELS[categoria].lower()}.")
+
+    try:
+        from ultralytics import YOLO
+    except ImportError as exc:
+        raise RuntimeError(
+            "Falta Ultralytics. Instala las dependencias con: pip install -r requirements.txt"
+        ) from exc
+
+    with MODEL_LOCK:
+        if categoria not in MODEL_CACHE:
+            MODEL_CACHE[categoria] = YOLO(str(ruta))
+    return MODEL_CACHE[categoria]
+
+
+def info_clase(nombre):
+    clave = str(nombre).strip().lower()
+    return CLASS_INFO.get(clave, {
+        "nombre": clave.replace("_", " ").capitalize(),
+        "descripcion": "El detector marcó una región parecida a esta clase. La imagen por sí sola no confirma una enfermedad.",
+        "fuente": "",
+    })
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    muestras = []
+    for categoria, filename, titulo, etiqueta in FEATURED_SAMPLES:
+        if (DEMO_SAMPLES_DIR / categoria / filename).is_file():
+            muestras.append({
+                "categoria": categoria,
+                "titulo": titulo,
+                "etiqueta": etiqueta,
+                "imagen": url_for("foto_muestra", categoria=categoria, filename=filename),
+            })
+    return render_template("index.html", muestras=muestras)
+
+
+@app.route("/demo-samples/<categoria>/<path:filename>")
+def foto_muestra(categoria, filename):
+    if categoria not in MODEL_PATHS:
+        abort(404)
+    carpeta = DEMO_SAMPLES_DIR / categoria
+    if not carpeta.is_dir():
+        abort(404)
+    return send_from_directory(carpeta, filename, max_age=3600)
+
+
+@app.errorhandler(413)
+def archivo_demasiado_grande(_error):
+    return jsonify(error="La imagen supera el límite de 8 MB."), 413
 
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    categoria = (request.form.get("categoria") or "").strip().lower()
+    if categoria == "dientes":
+        return jsonify(error="El módulo dental aún no está disponible: falta un dataset etiquetado y un modelo validado."), 422
+    if categoria not in MODEL_PATHS:
+        return jsonify(error="Selecciona piel u orejas para analizar la imagen."), 400
+
     archivo = request.files.get("imagen")
     if not archivo or archivo.filename == "":
         return jsonify(error="No se envió ninguna imagen."), 400
 
-    if model is None:  # modo demo
-        demo = [("Dermatitis", 0.78), ("Hypersensitivity", 0.12), ("Skin Allergy in Dog", 0.06)]
-        return jsonify(
-            demo=True,
-            confiable=True,
-            resultados=[{"clase": c, "confianza": p} for c, p in demo],
-        )
+    try:
+        with Image.open(archivo.stream) as original:
+            imagen = ImageOps.exif_transpose(original).convert("RGB")
+            imagen.load()
+    except (UnidentifiedImageError, OSError, ValueError):
+        return jsonify(error="No pude leer la imagen. Usa un archivo JPG, PNG o WebP válido."), 400
 
     try:
-        probs = model.predict(preparar(archivo.read()), verbose=0)[0]
+        model = cargar_modelo(categoria)
+        with INFERENCE_LOCK:
+            prediccion = model.predict(
+                source=imagen,
+                imgsz=IMAGE_SIZE,
+                conf=CONFIDENCE_THRESHOLD,
+                iou=IOU_THRESHOLD,
+                max_det=MAX_DETECTIONS,
+                verbose=False,
+            )[0]
+    except FileNotFoundError as exc:
+        return jsonify(error=str(exc)), 503
+    except RuntimeError as exc:
+        return jsonify(error=str(exc)), 503
     except Exception:
-        return jsonify(error="No pude leer la imagen. Prueba con otra (JPG o PNG)."), 400
+        app.logger.exception("Falló la inferencia del modelo %s", categoria)
+        return jsonify(error="No se pudo ejecutar el modelo. Revisa sus dependencias e inténtalo de nuevo."), 500
 
-    top3 = np.argsort(probs)[::-1][:3]
-    resultados = [{"clase": class_names[i], "confianza": float(probs[i])} for i in top3]
-    return jsonify(demo=False, confiable=resultados[0]["confianza"] >= UMBRAL, resultados=resultados)
+    detecciones = []
+    agrupadas = {}
+    cajas = prediccion.boxes
+    if cajas is not None and len(cajas):
+        coords = cajas.xyxy.cpu().tolist()
+        ids_clase = cajas.cls.int().cpu().tolist()
+        puntajes = cajas.conf.cpu().tolist()
+        for coords_xyxy, class_id, score in zip(coords, ids_clase, puntajes):
+            raw_name = prediccion.names[int(class_id)]
+            info = info_clase(raw_name)
+            score = float(score)
+            detecciones.append({
+                "clase": info["nombre"],
+                "confianza": score,
+                "caja": [round(float(value), 1) for value in coords_xyxy],
+            })
+            if info["nombre"] not in agrupadas or score > agrupadas[info["nombre"]]["confianza"]:
+                agrupadas[info["nombre"]] = {
+                    "clase": info["nombre"],
+                    "confianza": score,
+                    "descripcion": info["descripcion"],
+                    "fuente": info["fuente"],
+                }
+
+    resultados = sorted(agrupadas.values(), key=lambda item: item["confianza"], reverse=True)
+    mensaje = (
+        f"Se detectaron {len(detecciones)} regiones visuales para revisar."
+        if detecciones
+        else "No se detectaron regiones de las clases que reconoce este modelo. Esto no significa que la mascota esté sana."
+    )
+    return jsonify(
+        demo=False,
+        categoria=categoria,
+        zona=MODEL_LABELS[categoria],
+        detecciones=detecciones,
+        resultados=resultados,
+        cantidad=len(detecciones),
+        mensaje=mensaje,
+        puntaje_es_probabilidad=False,
+        umbral=CONFIDENCE_THRESHOLD,
+    )
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    host = os.environ.get("PATOO_HOST", "0.0.0.0")
+    port = int(os.environ.get("PATOO_PORT", "5000"))
+    app.run(host=host, port=port, debug=False)

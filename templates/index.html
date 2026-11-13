@@ -26,7 +26,7 @@
     <section class="hero" aria-labelledby="titulo-principal">
       <div class="hero-copy">
         <h1 id="titulo-principal">Ellos no pueden contarlo.<br><span>Sus fotos sí.</span></h1>
-        <p>Sube una foto de la piel, los ojos o las orejas de tu compañero. Te mostraremos algunas posibilidades para que sepas por dónde empezar.</p>
+        <p>Sube una foto de la piel o las orejas de tu compañero. Te mostraremos algunas posibilidades para que sepas por dónde empezar.</p>
         <ul class="hero-points">
           <li><i aria-hidden="true">✓</i> Fácil de usar</li>
           <li><i aria-hidden="true">✓</i> Resultado en segundos</li>
@@ -54,19 +54,43 @@
       </div>
 
       <div class="tarjeta upload-card">
+        <div class="categoria-wrap">
+          <label for="categoria">¿Qué zona quieres revisar?</label>
+          <select id="categoria" name="categoria">
+            <option value="piel">Piel</option>
+            <option value="orejas">Orejas</option>
+            <option value="dientes" disabled>Dientes y boca (próximamente)</option>
+          </select>
+          <small>El módulo dental se habilitará cuando tengamos imágenes y etiquetas veterinarias revisadas.</small>
+        </div>
         <div id="zona" class="zona" role="button" tabindex="0" aria-label="Selecciona o arrastra una foto de tu mascota">
           <img id="preview" alt="Vista previa de la foto seleccionada" hidden>
           <div id="zona-texto" class="zona-texto">
             <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 21V7m0 0-5 5m5-5 5 5M7 19v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
             <strong><span class="txt-pc">Arrastra tu foto hasta aquí</span><span class="txt-movil">Toca para añadir una foto</span></strong>
             <span class="zona-sub">o selecciónala desde tu dispositivo</span>
-            <small>JPG, PNG o WebP</small>
+            <small>JPG, PNG o WebP · hasta 8 MB</small>
           </div>
           <div id="cargando" class="cargando" hidden aria-hidden="true"><span class="spinner"></span><span>Analizando tu foto…</span></div>
         </div>
 
         <input id="archivo" type="file" accept="image/jpeg,image/png,image/webp" hidden>
         <input id="camara" type="file" accept="image/*" capture="environment" hidden>
+
+        {% if muestras %}
+        <section class="demo-muestras" aria-label="Imágenes de prueba incluidas">
+          <div class="demo-muestras-heading"><strong>¿Quieres probar sin buscar una foto?</strong><small>Estas muestras vienen del conjunto de prueba.</small></div>
+          <div class="demo-grid">
+            {% for muestra in muestras %}
+            <button class="sample-card" type="button" data-categoria="{{ muestra.categoria }}" data-url="{{ muestra.imagen }}">
+              <img src="{{ muestra.imagen }}" alt="" loading="lazy">
+              <span class="sample-copy"><strong>{{ muestra.titulo }}</strong><small>Ejemplo: {{ muestra.etiqueta }}</small></span>
+              <span class="sample-arrow" aria-hidden="true">→</span>
+            </button>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
 
         <div class="photo-tip">
           <span class="tip-icon" aria-hidden="true">✦</span>
@@ -86,9 +110,9 @@
           <span class="result-check" aria-hidden="true">✦</span>
           <div><span class="step-label">Tu orientación</span><h2 id="titulo-res"></h2></div>
         </div>
-        <div id="aviso-baja" class="aviso" hidden><strong>No estamos del todo seguros.</strong> Prueba con otra foto, con más luz y más cerca.</div>
+        <p id="resumen-detecciones" class="resumen-detecciones"></p>
+        <div id="aviso-baja" class="aviso"><strong>Orientación visual:</strong> el puntaje del modelo no es una probabilidad ni un diagnóstico veterinario. Si tienes dudas, consulta a un profesional.</div>
         <div id="barras" class="barras"></div>
-        <p id="demo" class="demo" hidden>Estos son resultados de ejemplo mientras se configura el modelo.</p>
         <button id="btn-otra" class="btn secundario ancho" type="button">Probar con otra foto</button>
       </section>
 
@@ -100,3 +124,7 @@
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
+
+
+
+
