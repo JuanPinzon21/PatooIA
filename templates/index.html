@@ -26,7 +26,7 @@
     <section class="hero" aria-labelledby="titulo-principal">
       <div class="hero-copy">
         <h1 id="titulo-principal">Ellos no pueden contarlo.<br><span>Sus fotos sí.</span></h1>
-        <p>Sube una foto de la piel, las orejas o una imagen general de tu compañero. Te mostraremos posibles opciones para investigar y saber por dónde empezar.</p>
+        <p>Sube una foto de la piel, las orejas, los ojos, los dientes o una imagen general de tu compañero. Te mostraremos opciones para investigar y saber por dónde empezar.</p>
         <ul class="hero-points">
           <li><i aria-hidden="true">✓</i> Fácil de usar</li>
           <li><i aria-hidden="true">✓</i> Resultado en segundos</li>
@@ -58,11 +58,12 @@
           <label for="categoria">¿Qué quieres revisar?</label>
           <select id="categoria" name="categoria">
             <option value="piel">Piel</option>
-            <option value="orejas">Orejas (detector)</option>
-            <option value="general">Clasificador general</option>
-            <option value="dientes" disabled>Dientes y boca (próximamente)</option>
+            <option value="orejas">Orejas</option>
+            <option value="ojos">Ojos</option>
+            <option value="dental">Dientes y encías</option>
+            <option value="general">Foto general (experimental)</option>
           </select>
-          <small>La opción general evalúa la foto completa y muestra posibles opciones para investigar; no localiza lesiones ni confirma enfermedades. Piel y orejas usan detectores independientes.</small>
+          <small>Piel, orejas, ojos y dientes usan detectores independientes. La foto general es experimental: evalúa la imagen completa y sugiere etiquetas para investigar, sin localizar lesiones ni confirmar enfermedades.</small>
         </div>
         <div id="zona" class="zona" role="button" tabindex="0" aria-label="Selecciona o arrastra una foto de tu mascota">
           <img id="preview" alt="Vista previa de la foto seleccionada" hidden>

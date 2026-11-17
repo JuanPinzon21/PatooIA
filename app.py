@@ -8,25 +8,35 @@ from flask import Flask, abort, jsonify, render_template, request, send_from_dir
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 BASE_DIR = Path(__file__).resolve().parent
-DEMO_SAMPLES_DIR = BASE_DIR / "demo_samples"
+PROJECT_DIR = BASE_DIR
+DEMO_SAMPLES_DIR = PROJECT_DIR / "demo_samples"
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
-# Detectores independientes: cada uno fue entrenado para una zona distinta.
+# Detectores independientes entrenados para cada zona.
 MODEL_PATHS = {
-    "piel": BASE_DIR / "model" / "piel" / "best.pt",
-    "orejas": BASE_DIR / "model" / "orejas" / "best.pt",
+    "piel": PROJECT_DIR / "model" / "piel" / "best.pt",
+    "orejas": PROJECT_DIR / "model" / "orejas" / "best.pt",
+    "ojos": PROJECT_DIR / "model" / "ojos" / "best.pt",
+    "dental": PROJECT_DIR / "model" / "dental" / "best.pt",
 }
-MODEL_LABELS = {"piel": "Piel", "orejas": "Orejas", "general": "Clasificador general Colab"}
-COLAB_MODEL_PATH = BASE_DIR / "model" / "colab" / "huellitas_best.keras"
-COLAB_LABELS_PATH = BASE_DIR / "model" / "colab" / "class_names_es.json"
-COLAB_LABELS = json.loads(COLAB_LABELS_PATH.read_text(encoding="utf-8"))["output_order_from_notebook"]
-COLAB_INPUT_SIZE = tuple(json.loads(COLAB_LABELS_PATH.read_text(encoding="utf-8"))["input_size"])
+MODEL_LABELS = {
+    "piel": "Piel",
+    "orejas": "Orejas",
+    "ojos": "Ojos",
+    "dental": "Dientes y encías",
+    "general": "Foto general experimental",
+}
+GENERAL_MODEL_PATH = PROJECT_DIR / "model" / "colab" / "huellitas_best.keras"
+GENERAL_LABELS_PATH = PROJECT_DIR / "model" / "colab" / "class_names_es.json"
+GENERAL_METADATA = json.loads(GENERAL_LABELS_PATH.read_text(encoding="utf-8"))
+COLAB_LABELS = GENERAL_METADATA["output_order_from_notebook"]
+COLAB_INPUT_SIZE = tuple(GENERAL_METADATA["input_size"])
 COLAB_MODEL_CACHE = None
 MODEL_CACHE = {}
 MODEL_LOCK = Lock()
 INFERENCE_LOCK = Lock()
-IMAGE_SIZE = 416
+IMAGE_SIZE = 640
 CONFIDENCE_THRESHOLD = 0.10
 IOU_THRESHOLD = 0.45
 MAX_DETECTIONS = 20
@@ -75,8 +85,38 @@ CLASS_INFO = {
     },
     "enrojecimiento_hematoma_auricular": {
         "nombre": "Enrojecimiento o hematoma auricular",
-        "descripcion": "La clase del modelo agrupa ambos aspectos. Un hematoma es una hinchazón con sangre o líquido bajo la piel del pabellón; la imagen no confirma su causa.",
+        "descripcion": "La clase del modelo agrupa ambos aspectos. La imagen no permite confirmar la causa; requiere valoración veterinaria.",
         "fuente": "https://www.msdvetmanual.com/ear-disorders/diseases-of-the-pinna/auricular-hematomas-in-animals",
+    },
+    "conjuntivitis": {
+        "nombre": "Conjuntivitis",
+        "descripcion": "Etiqueta visual asociada a inflamación ocular. Hay causas distintas y la imagen no permite confirmarlas.",
+        "fuente": "",
+    },
+    "entropion": {
+        "nombre": "Entropión",
+        "descripcion": "La clase se refiere al pliegue del párpado hacia el ojo. El detector solo sugiere una región para revisar.",
+        "fuente": "",
+    },
+    "bultos_parpados": {
+        "nombre": "Bultos en los párpados",
+        "descripcion": "La etiqueta agrupa protuberancias visibles en el párpado; la imagen no determina su naturaleza.",
+        "fuente": "",
+    },
+    "opacidad_ocular": {
+        "nombre": "Opacidad ocular",
+        "descripcion": "Zona con apariencia opaca en el ojo. La causa debe determinarse mediante una evaluación profesional.",
+        "fuente": "",
+    },
+    "depositos_dentales": {
+        "nombre": "Depósitos dentales",
+        "descripcion": "Etiqueta visual para acumulaciones sobre los dientes. La foto no evalúa toda la boca ni confirma el estado dental.",
+        "fuente": "",
+    },
+    "inflamacion_encias": {
+        "nombre": "Inflamación de encías",
+        "descripcion": "La clase sugiere una zona de encía inflamada; no confirma la causa ni la gravedad.",
+        "fuente": "",
     },
 }
 
@@ -114,7 +154,7 @@ def cargar_clasificador_colab():
     global COLAB_MODEL_CACHE
     if COLAB_MODEL_CACHE is not None:
         return COLAB_MODEL_CACHE
-    if not COLAB_MODEL_PATH.is_file():
+    if not GENERAL_MODEL_PATH.is_file():
         raise FileNotFoundError("Falta model/colab/huellitas_best.keras.")
     try:
         import tensorflow as tf
@@ -122,7 +162,7 @@ def cargar_clasificador_colab():
         raise RuntimeError("Falta TensorFlow. Instala las dependencias de requirements.txt.") from exc
     with MODEL_LOCK:
         if COLAB_MODEL_CACHE is None:
-            model = tf.keras.models.load_model(COLAB_MODEL_PATH, compile=False)
+            model = tf.keras.models.load_model(GENERAL_MODEL_PATH, compile=False)
             salida = model.output_shape[-1]
             if salida != len(COLAB_LABELS):
                 raise RuntimeError(
@@ -204,10 +244,8 @@ def archivo_demasiado_grande(_error):
 @app.route("/predict", methods=["POST"])
 def predict():
     categoria = (request.form.get("categoria") or "").strip().lower()
-    if categoria == "dientes":
-        return jsonify(error="El módulo dental aún no está disponible: falta un dataset etiquetado y un modelo validado."), 422
     if categoria not in MODEL_PATHS and categoria != "general":
-        return jsonify(error="Selecciona piel, orejas o el clasificador general de Colab."), 400
+        return jsonify(error="Selecciona piel, orejas, ojos, dientes o foto general experimental."), 400
 
     archivo = request.files.get("imagen")
     if not archivo or archivo.filename == "":
@@ -238,7 +276,7 @@ def predict():
             detecciones=[],
             resultados=resultados,
             cantidad=len(resultados),
-            mensaje="El clasificador compara la foto completa con 28 categorías. Son puntajes del modelo, no probabilidades ni diagnósticos.",
+            mensaje="El clasificador experimental compara la foto completa con etiquetas del prototipo. Sus puntajes no son probabilidades ni diagnósticos.",
             puntaje_es_probabilidad=False,
             umbral=None,
         )

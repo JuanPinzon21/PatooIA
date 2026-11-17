@@ -5,3 +5,6 @@ __pycache__/
 model/*.keras
 
 demo_samples/
+
+reports/evaluaciones/*/val_batch*.jpg
+runs/

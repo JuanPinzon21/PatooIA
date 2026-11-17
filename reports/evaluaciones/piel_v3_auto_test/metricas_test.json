@@ -1,0 +1,11 @@
+{
+  "modelo": "patoo_piel_yolo11n_v3_auto",
+  "particion": "test",
+  "imagenes": 357,
+  "precision": 0.5672434951703031,
+  "recall": 0.4907987240947058,
+  "map50": 0.5241837618242696,
+  "map50_95": 0.3155502909291719,
+  "imgsz": 416,
+  "device": "cpu"
+}

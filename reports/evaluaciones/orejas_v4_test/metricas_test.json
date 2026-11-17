@@ -1,0 +1,12 @@
+{
+  "modelo": "patoo_orejas_yolo11n_v4",
+  "particion": "test",
+  "imagenes": 44,
+  "precision": 0.7230649186578648,
+  "recall": 0.6198438087036993,
+  "map50": 0.6121476446531827,
+  "map50_95": 0.26662861305949787,
+  "imgsz": 416,
+  "device": "cpu",
+  "advertencia": "El conjunto test se reutilizó de la línea anterior, por lo que la evaluación no es independiente de v3."
+}

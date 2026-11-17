@@ -1,83 +1,72 @@
 # PatooIA
 
-Prototipo Flask para explorar imágenes de piel y orejas de perros y gatos con dos detectores YOLO11 independientes.
+Prototipo Flask responsivo para explorar fotos de mascotas con detectores independientes de piel, orejas, ojos y dientes, y un clasificador general experimental.
 
 ## Modelos incluidos
 
-- `model/piel/best.pt`: Patoo piel YOLO11n v3_auto, entrenado para 6 clases.
-- `model/orejas/best.pt`: Patoo orejas YOLO11n v2, entrenado para 3 clases.
-- `model/colab/huellitas_best.keras`: MobileNetV2 de Colab, clasifica la imagen completa entre 28 etiquetas; las traducciones y el orden de salida están en `model/colab/class_names_es.json`.
+| Opción | Ruta en el repositorio | Clases |
+|---|---|---:|
+| Piel v3_auto | `model/piel/best.pt` | 6 |
+| Orejas v4 | `model/orejas/best.pt` | 3 |
+| Ojos v1 | `model/ojos/best.pt` | 4 |
+| Dental v2 | `model/dental/best.pt` | 2 |
+| Foto general experimental | `model/colab/huellitas_best.keras` | 28 |
 
-La interfaz permite elegir un detector para piel, otro para orejas o el clasificador general de Colab. Este último evalúa la imagen completa y no localiza hallazgos. El clasificador Colab incluye etiquetas de enfermedad dental para gatos y perros, pero no localiza dientes ni hallazgos; un detector dental específico sigue pendiente de datos anotados y validación. El reporte de orejas V3 tiene 49 imágenes aprobadas, 41 excluidas y 56 marcadas para revisión; conviene cerrar esa revisión antes de sumar esos datos a un nuevo entrenamiento.
+Los detectores por zona marcan regiones en la imagen. La opción general evalúa la imagen completa y no localiza lesiones. Los puntajes son orientativos: no son probabilidades ni diagnósticos veterinarios.
 
-Los CSV de entrenamiento muestran estos resultados de validación (no son una evaluación clínica ni una prueba independiente):
+## Instalar y ejecutar en Windows
 
-| Modelo | Precisión | Recall | mAP50 | mAP50-95 |
-| --- | ---: | ---: | ---: | ---: |
-| Piel v3_auto | 0.603 | 0.545 | 0.571 | 0.365 |
-| Orejas v2 | 0.678 | 0.602 | 0.637 | 0.265 |
-
-## Ejecutar en Windows
-
-Desde esta carpeta, abre PowerShell y ejecuta:
+Abre PowerShell en la carpeta raíz de este repositorio:
 
 ```powershell
-py -3.12 -m venv venv
+cd "C:\Users\JuanH\OneDrive\Desktop\Patoo\PatooIA"
+```
+
+El entorno `venv` ya existe en la carpeta. Actualiza e instala dependencias con el Python de ese entorno:
+
+```powershell
 .\venv\Scripts\python.exe -m pip install --upgrade pip
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
 .\venv\Scripts\python.exe app.py
 ```
 
-Después abre `http://127.0.0.1:5000` en el navegador. La primera instalación puede tardar porque PyTorch y Ultralytics ocupan espacio.
-
-## Añadir el módulo dental
-
-1. Conseguir imágenes de bocas y dientes de perros y gatos con permiso de uso y licencia documentada.
-2. Definir etiquetas concretas con revisión veterinaria (por ejemplo, placa/cálculo, gingivitis y dientes fracturados). Incluir diversidad de animales, edades, iluminación y dispositivos.
-3. Anotar cajas de cada hallazgo en formato YOLO; separar train/valid/test por animal o fuente para evitar que fotos casi iguales caigan en particiones distintas.
-4. Entrenar un detector dental independiente y medirlo en un test que no se haya usado para entrenar ni ajustar umbrales.
-5. Añadir su checkpoint y activar la opción `dientes` solo después de revisar errores por clase y con asesoría veterinaria.
-
-No se deben mezclar fotos de piel, orejas y dientes como si fueran una sola tarea: cada zona necesita datos, clases y evaluación propios. Revisa y conserva las licencias de cada fuente antes de redistribuir datasets o checkpoints.
-
-## Alcance
-
-Los puntajes son salidas del detector, no probabilidades clínicas. “Sin regiones detectadas” no significa que la mascota esté sana. El prototipo no reemplaza una evaluación veterinaria.
-
-
-
-
-## Ensayo rápido para la presentación
-
-1. Instala dependencias y levanta Flask con los comandos de arriba.
-2. Abre `http://127.0.0.1:5000`.
-3. Selecciona **Piel** y prueba esta imagen del split `test`:
-   `..\..\dataset\piel\piel_final_v3_auto\test\images\dog_skin_diseases_80a51789_00339.jpg` (etiqueta de referencia: `tina`).
-4. Selecciona **Orejas** y prueba esta imagen del split `test`:
-   `..\..\dataset\orejas\orejas_final_v2_limpio\test\images\feline_dermaaid_0f2162ae48_13_jpg.rf.9b3c27c07bd8b4de5cff064441c96d09.jpg` (etiqueta de referencia: `acaros_oido`).
-5. Guarda una captura de cada resultado para la presentación. Si una imagen no coincide con la etiqueta, muéstralo como limitación del prototipo y no cambies el umbral solo para forzar el resultado.
-
-Estas dos imágenes están en `test`: úsalas para la demostración, no las agregues al entrenamiento. Al presentar, di “región/clase sugerida por el detector”, no “diagnóstico” ni “probabilidad”.
-
-## Posible fuente para explorar después de la presentación
-
-El conjunto [Cat Dental Object Detection Dataset](https://universe.roboflow.com/final-year-project-6yujd/cat-dental-anz2r) reporta 315 imágenes, clases `gingivitis` y `plaque`, y licencia CC BY 4.0. Su página no explica la procedencia ni la revisión veterinaria de las etiquetas, así que no se incluye en el entrenamiento actual. Descárgalo solo para inspección y confirma anotaciones, licencia y calidad antes de combinarlo. Es solo para gatos; aún harían falta datos dentales caninos revisados.
+Abre `http://127.0.0.1:5000`. Si clonas el repositorio en otro equipo y no existe `venv`, créalo primero con `py -3.12 -m venv venv` y luego ejecuta los mismos comandos. La instalación de PyTorch, Ultralytics y TensorFlow puede tardar y ocupar varios GB.
 
 ## Mostrar la app en un teléfono
 
-La app se sirve en la red local para una presentación; no es necesario instalarla desde una tienda.
-
 1. Conecta el portátil y el teléfono a la misma red Wi-Fi.
-2. Inicia Flask desde la carpeta PatooIA con `.\venv\Scripts\python.exe app.py`.
-3. En el portátil ejecuta `ipconfig` y busca la dirección IPv4 del adaptador Wi-Fi, por ejemplo `192.168.1.25`.
-4. En el teléfono abre `http://192.168.1.25:5000` sustituyendo la dirección por la del portátil. Si Windows pregunta, permite Python en redes privadas.
-5. En la página puedes tocar las muestras de piel/orejas o usar **Tomar foto** desde el teléfono.
+2. Deja Flask ejecutándose en el portátil.
+3. Ejecuta `ipconfig` y busca la dirección IPv4 del adaptador Wi-Fi.
+4. En el teléfono abre `http://IP_DEL_COMPUTADOR:5000`, por ejemplo `http://192.168.1.25:5000`.
+5. Si Windows pregunta, permite Python en redes privadas. El servidor de desarrollo es para una demostración local, no para publicar en Internet.
 
-Usa una red privada y deja Flask abierto solo durante la demostración. El servidor de desarrollo no es para publicar la app en Internet.
+## Estado de las evaluaciones
 
-## Carpeta local de muestras
+Hay reportes *test* guardados para ojos (291 imágenes: P 0.863, R 0.801, mAP50 0.915, mAP50–95 0.615) y dientes v2 (140 imágenes: P 0.448, R 0.443, mAP50 0.402, mAP50–95 0.206). Dental v1 y v2 comparten exactamente el mismo test; el resultado no es independiente.
 
-`demo_samples/` tiene 18 copias del split `test`: dos por cada una de las 6 clases de piel y dos por cada una de las 3 clases de orejas. La página muestra una muestra destacada de cada zona para que también se pueda probar desde el teléfono. El resto está separado por carpeta y clase; `demo_samples/LEEME_PRUEBAS.txt` registra el archivo original y su etiqueta.
+Se ejecutó evaluación *test* con los pesos integrados y quedan los resultados en `reports/evaluaciones/`: piel v3_auto sobre 357 imágenes (P 0.567, R 0.491, mAP50 0.524, mAP50–95 0.316) y orejas v4 sobre 44 imágenes (P 0.723, R 0.620, mAP50 0.612, mAP50–95 0.267). Las métricas completas y gráficos están guardados en esas carpetas. Orejas v4 reutiliza el test de la línea anterior; no es una evaluación independiente nueva. Dental v1/v2 también comparten el mismo test. Estas métricas no demuestran desempeño clínico.
 
-La carpeta está ignorada por Git para no redistribuir imágenes sin verificar las licencias. Las etiquetas son referencias del dataset; una predicción distinta no convierte el resultado en diagnóstico ni demuestra que el modelo esté correcto.
+Las particiones de entrenamiento no son necesarias para ejecutar la página. Las salidas del modelo no diagnostican y requieren validación de datos y revisión veterinaria.
+
+## Muestras de demostración
+
+`demo_samples/` contiene ejemplos locales de piel y orejas. Las muestras se excluyen de Git mediante `.gitignore` porque se debe verificar la licencia de las imágenes antes de redistribuirlas. La app funciona también si esa carpeta no está presente.
+
+## Publicar en Render o Railway
+
+El repositorio ya incluye `Procfile` para el servidor de producción Gunicorn. En ambos servicios conecta el repositorio GitHub `PatooIA`, usa la raíz del repo, instala con `pip install -r requirements.txt` y configura como start command:
+
+```text
+gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 180
+```
+
+`workers=1` evita cargar varias copias de los modelos en memoria. La app se mantiene en CPU; no usa GPU alojada.
+
+**Recomendación para este prototipo: Railway Hobby con 1–2 GB de RAM asignada.** Al cargar los cinco modelos, medí aproximadamente 525 MB de memoria en el entorno local, sin contar diferencias de Linux, el servidor y picos al analizar. Railway Trial baja de hasta 1 GB a 0.5 GB al terminar; Hobby tiene mínimo de $5/mes que incluye $5 de uso y cobra el consumo que lo exceda. Revisa Usage y fija un límite de gasto antes de dejarlo publicado.
+
+Render también lo puede ejecutar: su plan gratis tiene 512 MB y se duerme tras 15 minutos sin tráfico, por lo que no lo recomiendo para esta app con los cinco modelos. El plan Render de 2 GB figura actualmente a $25/mes; ofrece un costo más fijo. Consulta precios antes de elegir porque pueden cambiar.
+
+Pasos Render: `New` → `Web Service` → conecta `PatooIA` → build `pip install -r requirements.txt` → start command de arriba → plan con 2 GB RAM.
+
+Pasos Railway: `New Project` → `Deploy from GitHub repo` → elige `PatooIA` → verifica el start command de arriba → asigna al menos 1 GB (2 GB recomendado) → genera un dominio público.
 

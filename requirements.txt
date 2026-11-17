@@ -1,5 +1,7 @@
 Flask>=3.1,<4
 Pillow>=10.0
+numpy>=2.0,<2.2
 ultralytics>=8.3,<9
-# Clasificador general MobileNetV2 exportado desde Colab
+# Solo para la opción general experimental
 tensorflow>=2.16,<3
+gunicorn>=23,<24; sys_platform != "win32"
