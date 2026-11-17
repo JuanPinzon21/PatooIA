@@ -5,3 +5,4 @@ ultralytics>=8.3,<9
 # Solo para la opción general experimental
 tensorflow>=2.16,<3
 gunicorn>=23,<24; sys_platform != "win32"
+opencv-python-headless
